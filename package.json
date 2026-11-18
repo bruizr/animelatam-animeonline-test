@@ -1,0 +1,14 @@
+{
+  "name": "animelatam-animeonline-test",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Prueba aislada del proveedor AnimeOnline.ninja para Stremio",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "cheerio": "^1.1.2",
+    "express": "^4.21.1"
+  }
+}
