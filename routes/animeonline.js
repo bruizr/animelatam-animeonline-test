@@ -72,4 +72,4 @@ router.get("/test/resolve",async(req,res)=>{
   catch(error){res.status(502).json({error:error.message})}
 });
 
-module.exports={router};
+module.exports=router;
