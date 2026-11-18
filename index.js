@@ -8,6 +8,7 @@ app.get("/manifest.json",(req,res)=>res.json({
   name:"AnimeOnline Test",
   description:"Proveedor experimental AnimeOnline.ninja / FileLions",
   resources:["stream"],
+  catalogs:[],
   types:["series","movie","anime"],
   idPrefixes:["animeonline:"]
 }));
