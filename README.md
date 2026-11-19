@@ -1,43 +1,37 @@
-# AnimeLatam Torrents Latino
+# Animux Stremio • Anime Latino
 
-Addon independiente de Stremio para buscar torrents de anime y mostrar únicamente publicaciones cuyo título declara explícitamente audio español latino.
+Addon de Stremio que adapta el motor de extracción de [Animux](https://github.com/MarcoAnotino/animux) a una API HTTP.
 
-## Instalación
+## Funciones
+- Búsqueda de anime, catálogo y fichas de series con episodios.
+- Resolución de enlaces al solicitar cada episodio.
+- Varios servidores cuando la fuente permite enumerarlos.
+- Fallback entre proveedores.
+- Modo de doblaje español; AnimeFLV se limita a la pista `LAT`, excluyendo `ESP` y `CAST`.
+- Aviso cuando no se encuentran fuentes reproducibles.
 
-- Manifest: https://animelatam-animeonline-test.vercel.app/manifest.json
-- Estado: https://animelatam-animeonline-test.vercel.app/health
-- Proveedores: https://animelatam-animeonline-test.vercel.app/providers
+## Fuentes
+El orden del motor Animux para español doblado es MonosChinos → AnimeFLV → AnimeAV1. La disponibilidad cambia según los proveedores. Las etiquetas de idioma de terceros no siempre permiten verificar de forma independiente la región del audio.
 
-En Stremio: abre el enlace del manifest o pega la URL en el buscador de addons.
-
-## Filtro de idioma
-
-El filtro es intencionalmente estricto. Acepta etiquetas explícitas como `Spanish Latino`, `Español Latino`, `Latam Dub`, `Latino Audio` o `[LAT]`. No considera suficientes etiquetas genéricas como `Spanish`, `MULTI`, `Dual Audio`, `ESP` o la presencia de subtítulos.
-
-**Limitación importante:** el addon filtra por metadatos del nombre del release; no analiza las pistas de audio dentro del archivo torrent/video. Por ello, una etiqueta puede ser incorrecta y un release sin etiqueta latina puede quedar fuera. El resultado debe considerarse una coincidencia declarada, no una verificación técnica del contenido.
-
-## Proveedores
-
-Integrados en esta primera versión: Nyaa RSS, Tokyo Toshokan (HTML público) y The Pirate Bay API.
-
-Los demás proveedores de la lista quedan registrados en `/providers` con estado pendiente o fuera de servicio. No se simulan resultados. AnimeTosho y su feed NZB se marcan fuera de servicio por el anuncio público de cierre de feeds/API. Easynews se omite por decisión del proyecto.
-
-## Desarrollo
+## Desarrollo local
+Requiere Python 3.10+.
 
 ```bash
-npm install
-npm start
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+# Linux/macOS: source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app:app --host 0.0.0.0 --port 3000
 ```
 
-Node.js 20 o superior.
+Rutas: `/manifest.json`, `/health`, `/providers`, `/debug/search?q=naruto`, catálogo, meta y stream de Stremio.
 
-## Rutas
+## Despliegue
+FastAPI sobre runtime Python de Vercel. Los pushes a `main` activan el despliegue conectado.
 
-- `/manifest.json`: manifest Stremio
-- `/health`: comprobación de estado
-- `/providers`: estado de los proveedores
-- `/debug/search?q=...`: resultados y errores para diagnóstico
+## Créditos y licencia
+El motor se basa en [Animux](https://github.com/MarcoAnotino/animux), de MarcoAnotino, derivado a su vez de ani-cli. Se conservan los avisos originales en `LICENSE` y `NOTICE`.
 
-## Privacidad y seguridad
+Esta adaptación se distribuye bajo GNU GPL v3.0. Se modificó para integrarla con Stremio y limitar AnimeFLV a la pista LAT. Consulta `LICENSE` para el texto completo.
 
-No se solicitan credenciales ni se almacenan cuentas de proveedores. El addon devuelve enlaces magnet de los indexadores consultados. Utiliza únicamente fuentes y contenido a los que tengas derecho de acceso.
+El addon no aloja archivos multimedia; los proveedores externos determinan la disponibilidad y las condiciones de acceso.
