@@ -153,5 +153,27 @@ app.get("/debug/search", async (req, res) => {
   const data = await searchAll(req.query.q);
   res.json({ query: req.query.q, filter: "Spanish Latin audio explicitly tagged in release title", ...data });
 });
+app.get("/catalog/movie/anime-latino-torrents/:extra.json", async (req, res, next) => {
+  try {
+    const raw = String(req.params.extra || "");
+    const params = new URLSearchParams(raw);
+    const search = params.get("search") || params.get("query") || params.get("q") || "";
+    if (!search.trim()) return res.json({ metas: [] });
+    const { results } = await searchAll(search.trim());
+    return res.json({
+      metas: results.slice(0, 100).map(x => ({
+        id: "altt:" + Buffer.from(x.magnet).toString("base64url"),
+        type: "movie",
+        name: x.title,
+        poster: "",
+        description: "Proveedor: " + x.provider + " · Audio latino declarado en el nombre del release",
+        releaseInfo: "Audio latino",
+        genres: ["Anime", "Español latino"]
+      }))
+    });
+  } catch (error) {
+    return res.status(502).json({ metas: [], error: String(error.message || error) });
+  }
+});
 app.use(getRouter(addonInterface));
 app.listen(PORT, () => console.log("AnimeLatam Torrents Latino listening on " + PORT));
