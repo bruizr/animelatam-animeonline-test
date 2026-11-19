@@ -2,6 +2,7 @@ import asyncio, base64, json, logging, os, re, unicodedata
 from html import escape
 from urllib.parse import parse_qs, quote
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from extractors import AnimeExtractor
 
@@ -21,6 +22,13 @@ manifest = {
  "idPrefixes":["animux:"],"behaviorHints":{"adult":False,"p2p":False}
 }
 app = FastAPI(title=APP_NAME, version=APP_VERSION, docs_url=None, redoc_url=None)
+app.add_middleware(
+ CORSMiddleware,
+ allow_origins=["*"],
+ allow_methods=["*"],
+ allow_headers=["*"],
+ expose_headers=["*"],
+)
 
 def _encode(data):
  raw=json.dumps(data,ensure_ascii=False,separators=(",",":")).encode()
