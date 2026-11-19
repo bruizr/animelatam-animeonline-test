@@ -10,7 +10,6 @@ const manifest = {
   version: "1.0.0",
   name: "AnimeLatam Torrents Latino",
   description: "Buscador de torrents de anime. Solo muestra publicaciones que declaran explícitamente audio español latino.",
-  logo: "https://raw.githubusercontent.com/bruizr/animelatam-animeonline-test/main/logo.png",
   resources: ["catalog", "stream"],
   types: ["series", "movie"],
   catalogs: [{ type: "series", id: "anime-latino-torrents", name: "Torrents Anime Latino", extra: [{ name: "search", isRequired: true }] }],
@@ -24,6 +23,7 @@ const providers = [
   { id: "subsplease", name: "SubsPlease", status: "pending", kind: "manual", url: "https://subsplease.org/", reason: "Su catálogo habitual no declara audio español latino de forma verificable." },
   { id: "animetosho", name: "AnimeTosho", status: "offline", kind: "manual", url: "https://animetosho.org/", reason: "El servicio anunció el cierre de sus feeds y API en mayo de 2026." },
   { id: "animetosho-nzb", name: "AnimeTosho NZB", status: "offline", kind: "manual", url: "https://animetosho.org/", reason: "Depende del servicio AnimeTosho, cuyos feeds/API fueron cerrados." },
+  { id: "tsukihime-nzb", name: "TsukiHime NZB - EasyNews", status: "excluded", kind: "manual", url: "https://tsukihime.org/", reason: "Excluido por decisión del proyecto: no se integrará Easynews." },
   { id: "frai-raws", name: "Frai-raws", status: "pending", kind: "manual", url: "https://f-r.site/" },
   { id: "seadex", name: "SeaDex", status: "pending", kind: "manual", url: "https://releases.moe/" },
   { id: "nekobt", name: "NekoBT", status: "pending", kind: "manual", url: "https://nekobt.to/" },
@@ -89,7 +89,7 @@ async function tpbSearch(q) {
   if (!Array.isArray(json)) return [];
   return json.filter(x => x.id && x.id !== "0").slice(0, MAX_RESULTS).map(x => ({
     title: x.name, magnet: makeHashLink(x.info_hash), link: "https://thepiratebay.org/description.php?id=" + x.id,
-    seeders: Number(x.seeders || 0), size: Number(x בג || x.size || 0)
+    seeders: Number(x.seeders || 0), size: Number(x.size || 0)
   })).filter(x => x.magnet);
 }
 const adapters = { nyaa: nyaaSearch, tokyotosho: tokyoSearch, thepiratebay: tpbSearch };
