@@ -154,9 +154,12 @@ async def _catalog_results(query):
   log.warning("Búsqueda fallida: %s",exc); return {"metas":[]}
  metas=[]
  for item in results[:80]:
-  mid="animux:anime:"+_encode({"anime_id":item["id"],"title":item["title"],"poster":item["poster"]})
-  metas.append({"id":mid,"type":"series","name":item["title"],"poster":item["poster"],
-                "description":f"Fuente: {item['extractor']} · Doblaje español latino",
+  source_title=item["title"]
+  # Overgeared is indexed by AnimeAV1 under its alternate title.
+  display_title="Overgeared" if _normalize(query)=="overgeared" and _normalize(source_title)=="tempal item no chikara" else source_title
+  mid="animux:anime:"+_encode({"anime_id":item["id"],"title":display_title,"poster":item["poster"]})
+  metas.append({"id":mid,"type":"series","name":display_title,"poster":item["poster"],
+                "description":f"Título en la fuente: {source_title} · Fuente: {item['extractor']} · Doblaje español latino",
                 "genres":["Anime","Español latino"],"releaseInfo":"Español latino"})
  return {"metas":metas}
 
