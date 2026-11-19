@@ -20,7 +20,6 @@ manifest = {
  "catalogs":[
   {"type":"series","id":"animux-popular","name":"Populares"},
   {"type":"series","id":"animux-latest","name":"Últimos agregados"},
-  {"type":"series","id":"animux-trending","name":"Tendencias"},
   {"type":"series","id":"animux-search","name":"Buscar anime",
    "extra":[{"name":"search","isRequired":False}]}
  ],
