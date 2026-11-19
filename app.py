@@ -191,10 +191,10 @@ async def _discover_catalog(source_names, limit=60):
   except Exception: entries=[]
   if not entries:
    # Fallback to internal links from the provider homepage; keep only likely anime paths.
-   pattern=r'<a[^>]+href=["\\']([^"\\']+)["\\'][^>]*>(.*?)</a>'
+   pattern=r"<a[^>]+href=[\"']([^\"']+)[\"'][^>]*>(.*?)</a>"
    for href,body in re.findall(pattern,page,re.I|re.S):
     label=re.sub(r"<[^>]+>"," ",body)
-    label=re.sub(r"\\s+"," ",label).strip()
+    label=re.sub(r"\s+"," ",label).strip()
     absolute=__import__("urllib.parse",fromlist=["urljoin"]).urljoin(base,href)
     if label and len(label)<100 and re.search(r"/(?:anime|media)/",absolute):
      entries.append((absolute,label))
@@ -216,7 +216,15 @@ async def _discover_catalog(source_names, limit=60):
   if len(metas)>=limit: break
  return {"metas":metas}
 
-@app.get("/catalog/series/{catalog_id}.json")\nasync def catalog_index(catalog_id:str,search:str=""):\n if catalog_id=="animux-search": return await _catalog_results(search.strip()) if search.strip() else {"metas":[]}\n if catalog_id=="animux-popular": return await _popular_catalog()\n if catalog_id=="animux-latest": return await _discover_catalog(("monoschino","animeav1"))\n if catalog_id=="animux-trending": return await _discover_catalog(("animeav1","monoschino"))\n raise HTTPException(404,"Catálogo no encontrado")\n\n@app.get("/catalog/series/animux-search.json")
+@app.get("/catalog/series/{catalog_id}.json")
+async def catalog_index(catalog_id:str,search:str=""):
+ if catalog_id=="animux-search": return await _catalog_results(search.strip()) if search.strip() else {"metas":[]}
+ if catalog_id=="animux-popular": return await _popular_catalog()
+ if catalog_id=="animux-latest": return await _discover_catalog(("monoschino","animeav1"))
+ if catalog_id=="animux-trending": return await _discover_catalog(("animeav1","monoschino"))
+ raise HTTPException(404,"Catálogo no encontrado")
+
+@app.get("/catalog/series/animux-search.json")
 async def catalog_empty(search:str=""):
  return await _catalog_results(search.strip()) if search.strip() else {"metas":[]}
 
