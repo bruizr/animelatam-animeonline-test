@@ -49,6 +49,11 @@ function latinAudio(title) {
   // Deliberately strict: generic "Spanish", "MULTI", "dual audio" and subtitle tags do not qualify.
   return /(?:\bspanish\s*lat(?:ino|am)\b|\bespanol\s*lat(?:ino|am)\b|\baudio\s*latino\b|\blatino\s*audio\b|\blatam\s*(?:dub|audio)\b|\bdual\s*audio\s*lat(?:ino|am)\b|\[lat(?:ino|am)\])/i.test(t);
 }
+function noSourcesMeta(query) {
+  return { id: "altt:notice", type: "movie", name: "Sin fuentes disponibles", poster: "",
+    description: "No encontramos torrents con una etiqueta explícita de audio español latino para: " + query + ". Prueba otro título o inténtalo más tarde.",
+    releaseInfo: "Sin resultados", genres: ["Aviso"] };
+}
 function makeHashLink(hash, trackers = []) {
   if (!hash) return "";
   return "magnet:?xt=urn:btih:" + hash + trackers.map(t => "&tr=" + encodeURIComponent(t)).join("");
@@ -155,7 +160,7 @@ builder.defineCatalogHandler(async ({ type, id, extra }) => {
   };
 });
 builder.defineStreamHandler(async ({ type, id }) => {
-  if (!id.startsWith("altt:")) return { streams: [] };
+  if (id === "altt:notice" || !id.startsWith("altt:")) return { streams: [] };
   let magnet;
   try { magnet = Buffer.from(id.slice(5), "base64url").toString("utf8"); } catch { return { streams: [] }; }
   if (!magnet.startsWith("magnet:?xt=urn:btih:")) return { streams: [] };
@@ -180,7 +185,7 @@ app.get("/catalog/movie/anime-latino-torrents/:extra.json", async (req, res, nex
     if (!search.trim()) return res.json({ metas: [] });
     const { results } = await searchAll(search.trim());
     return res.json({
-      metas: results.slice(0, 100).map(x => ({
+      metas: results.length ? results.slice(0, 100).map(x => ({
         id: "altt:" + Buffer.from(x.magnet).toString("base64url"),
         type: "movie",
         name: x.title,
@@ -188,7 +193,7 @@ app.get("/catalog/movie/anime-latino-torrents/:extra.json", async (req, res, nex
         description: "Proveedor: " + x.provider + " · Audio latino declarado en el nombre del release",
         releaseInfo: "Audio latino",
         genres: ["Anime", "Español latino"]
-      }))
+      })) : [noSourcesMeta(search.trim())]
     });
   } catch (error) {
     return res.status(502).json({ metas: [], error: String(error.message || error) });
