@@ -1,14 +1,13 @@
 {
-  "name": "animelatam-animeonline-test",
-  "version": "0.1.0",
+  "name": "animelatam-torrent-search",
+  "version": "1.0.0",
   "private": true,
-  "description": "Prueba aislada del proveedor AnimeOnline.ninja para Stremio",
+  "description": "Stremio addon for searching anime torrents with an explicit Spanish-Latin audio release filter",
   "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
+  "scripts": { "start": "node index.js" },
+  "engines": { "node": ">=20" },
   "dependencies": {
-    "cheerio": "^1.1.2",
-    "express": "^4.21.1"
+    "express": "^4.21.2",
+    "stremio-addon-sdk": "^1.6.10"
   }
 }
