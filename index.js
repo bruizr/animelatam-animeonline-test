@@ -20,6 +20,7 @@ const providers = [
   { id: "nyaa", name: "Nyaa", status: "active", kind: "nyaa-rss", url: "https://nyaa.si/" },
   { id: "tokyotosho", name: "Tokyo Toshokan", status: "active", kind: "tokyo-rss", url: "https://www.tokyotosho.info/" },
   { id: "thepiratebay", name: "The Pirate Bay", status: "active", kind: "tpb-api", url: "https://thepiratebay.org/" },
+  { id: "knaben", name: "Knaben", status: "active", kind: "knaben-api", url: "https://knaben.org/" },
   { id: "subsplease", name: "SubsPlease", status: "pending", kind: "manual", url: "https://subsplease.org/", reason: "Su catálogo habitual no declara audio español latino de forma verificable." },
   { id: "animetosho", name: "AnimeTosho", status: "offline", kind: "manual", url: "https://animetosho.org/", reason: "El servicio anunció el cierre de sus feeds y API en mayo de 2026." },
   { id: "animetosho-nzb", name: "AnimeTosho NZB", status: "offline", kind: "manual", url: "https://animetosho.org/", reason: "Depende del servicio AnimeTosho, cuyos feeds/API fueron cerrados." },
@@ -83,6 +84,24 @@ async function tokyoSearch(q) {
     return { title, link: link || new URL(page, "https://www.tokyotosho.info").href, magnet: link.startsWith("magnet:") ? link : "" };
   }).filter(x => x.title && x.magnet);
 }
+async function knabenSearch(q) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const response = await fetch("https://api.knaben.org/v1", {
+      method: "POST",
+      signal: controller.signal,
+      headers: { "content-type": "application/json", "user-agent": "AnimeLatamTorrentAddon/1.0 (+Stremio)" },
+      body: JSON.stringify({ search_type: "100%", search_field: "title", query: q, order_by: "seeders", order_direction: "desc", size: MAX_RESULTS, hide_unsafe: true, hide_xxx: true })
+    });
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    const data = await response.json();
+    return (Array.isArray(data.hits) ? data.hits : []).map(x => ({
+      title: x.title || "", magnet: x.magnetUrl || (x.hash ? makeHashLink(x.hash) : ""),
+      link: x.details || x.link || "", seeders: Number(x.seeders || 0), size: Number(x.bytes || 0)
+    })).filter(x => x.title && x.magnet);
+  } finally { clearTimeout(timer); }
+}
 async function tpbSearch(q) {
   const data = await fetchText("https://apibay.org/q.php?q=" + esc(q));
   const json = JSON.parse(data);
@@ -92,7 +111,7 @@ async function tpbSearch(q) {
     seeders: Number(x.seeders || 0), size: Number(x.size || 0)
   })).filter(x => x.magnet);
 }
-const adapters = { nyaa: nyaaSearch, tokyotosho: tokyoSearch, thepiratebay: tpbSearch };
+const adapters = { nyaa: nyaaSearch, tokyotosho: tokyoSearch, thepiratebay: tpbSearch, knaben: knabenSearch };
 
 async function searchAll(query) {
   const active = providers.filter(p => p.status === "active" && adapters[p.id]);
