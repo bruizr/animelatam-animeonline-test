@@ -117,18 +117,23 @@ async function searchAll(query) {
 }
 const builder = new addonBuilder(manifest);
 builder.defineCatalogHandler(async ({ type, id, extra }) => {
-  if (id !== "anime-latino-torrents" || !extra?.search) return { metas: [] };
-  const { results } = await searchAll(extra.search);
-  return { metas: results.slice(0, 100).map((x, i) => ({
-    id: "altt:" + Buffer.from(x.magnet).toString("base64url"),
-    type: "movie",
-    name: x.title,
-    poster: "",
-    description: "Proveedor: " + x.provider + " · Audio latino declarado en el nombre del release",
-    releaseInfo: "Audio latino",
-    genres: ["Anime", "Español latino"],
-    runtime: x.size ? "Tamaño: " + x.size : undefined
-  })) };
+  const search = typeof extra === "string"
+    ? extra
+    : (extra?.search || extra?.query || extra?.q || "");
+  if (!String(search).trim()) return { metas: [] };
+  const { results } = await searchAll(String(search).trim());
+  return {
+    metas: results.slice(0, 100).map(x => ({
+      id: "altt:" + Buffer.from(x.magnet).toString("base64url"),
+      type: "movie",
+      name: x.title,
+      poster: "",
+      description: "Proveedor: " + x.provider + " · Audio latino declarado en el nombre del release",
+      releaseInfo: "Audio latino",
+      genres: ["Anime", "Español latino"],
+      runtime: x.size ? "Tamaño: " + x.size : undefined
+    }))
+  };
 });
 builder.defineStreamHandler(async ({ type, id }) => {
   if (!id.startsWith("altt:")) return { streams: [] };
