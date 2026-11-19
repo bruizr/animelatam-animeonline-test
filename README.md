@@ -3,7 +3,7 @@
 Addon de Stremio que adapta el motor de extracción de [Animux](https://github.com/MarcoAnotino/animux) a una API HTTP.
 
 ## Funciones
-- Búsqueda de anime, catálogo y fichas de series con episodios.
+- Catálogo Populares: selección curada y validada mediante búsqueda real en los proveedores.\n- Catálogo Últimos agregados: lectura de listados públicos de los proveedores compatibles con doblaje.\n- Búsqueda de anime y fichas de series con episodios.\n- No se publica un ranking de Tendencias porque los proveedores consultados no exponen métricas fiables de popularidad.
 - Resolución de enlaces al solicitar cada episodio.
 - Varios servidores cuando la fuente permite enumerarlos.
 - Fallback entre proveedores.
