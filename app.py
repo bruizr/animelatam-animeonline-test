@@ -17,8 +17,13 @@ manifest = {
  "id":"com.animux.stremio.latino","version":APP_VERSION,"name":APP_NAME,
  "description":"Anime en español latino. Motor de extracción basado en Animux.",
  "resources":["catalog","meta","stream"],"types":["series"],
- "catalogs":[{"type":"series","id":"animux-search","name":"Animux • Anime Latino",
-              "extra":[{"name":"search","isRequired":True}]}],
+ "catalogs":[
+  {"type":"series","id":"animux-popular","name":"Populares"},
+  {"type":"series","id":"animux-latest","name":"Últimos agregados"},
+  {"type":"series","id":"animux-trending","name":"Tendencias"},
+  {"type":"series","id":"animux-search","name":"Buscar anime",
+   "extra":[{"name":"search","isRequired":False}]}
+ ],
  "idPrefixes":["animux:"],"behaviorHints":{"adult":False,"p2p":False}
 }
 app = FastAPI(title=APP_NAME, version=APP_VERSION, docs_url=None, redoc_url=None)
@@ -138,7 +143,80 @@ async def debug_search(q:str=Query(min_length=1,max_length=160)):
  results=await asyncio.to_thread(_search,q.strip())
  return {"query":q,"language":"es-LAT","results":results,"count":len(results)}
 
-@app.get("/catalog/series/animux-search.json")
+
+POPULAR_TITLES = (
+ "Dragon Ball", "Naruto", "One Piece", "Bleach", "Death Note",
+ "Kimetsu no Yaiba", "Jujutsu Kaisen", "Solo Leveling",
+ "Shingeki no Kyojin", "My Hero Academia", "Overgeared",
+ "Sword Art Online", "Fullmetal Alchemist", "Tokyo Revengers",
+)
+
+def _catalog_item(item):
+ title=str(item.get("title") or "").strip()
+ anime_id=str(item.get("id") or "").strip()
+ if not title or not anime_id or _is_non_latin_release(title): return None
+ return {"id":"animux:anime:"+_encode({"anime_id":anime_id,"title":title,"poster":item.get("poster") or ""}),
+         "type":"series","name":title,"poster":item.get("poster") or "",
+         "description":f"Fuente: {item.get('extractor','Animux')} · Doblaje español latino",
+         "genres":["Anime","Español latino"],"releaseInfo":"Español latino"}
+
+async def _popular_catalog():
+ # Catálogo curado: solo incluye títulos que el motor logra localizar en proveedores.
+ async def find(title):
+  try: return await asyncio.to_thread(_search,title)
+  except Exception: return []
+ groups=await asyncio.gather(*(find(title) for title in POPULAR_TITLES))
+ metas=[]; seen=set()
+ for group in groups:
+  for item in group:
+   meta=_catalog_item(item)
+   if meta and meta["id"] not in seen:
+    seen.add(meta["id"]); metas.append(meta)
+ return {"metas":metas[:60]}
+
+async def _discover_catalog(source_names, limit=60):
+ # Lee listados públicos de portada de los proveedores compatibles con doblaje.
+ # La extracción de tarjetas es deliberadamente conservadora: solo acepta enlaces
+ # a páginas de anime que el extractor puede abrir y enumerar.
+ from extractors import EXTRACTOR_CLASSES
+ metas=[]; seen=set()
+ for cls in EXTRACTOR_CLASSES:
+  probe=cls()
+  if probe.site_name not in source_names or not getattr(probe,"supports_dub",False): continue
+  base=getattr(probe,"base_url","")
+  if not base: continue
+  page=await asyncio.to_thread(probe._download_webpage,base)
+  if not page: continue
+  try: entries=probe._article_results(page,base)
+  except Exception: entries=[]
+  if not entries:
+   # Fallback to internal links from the provider homepage; keep only likely anime paths.
+   pattern=r'<a[^>]+href=["\\']([^"\\']+)["\\'][^>]*>(.*?)</a>'
+   for href,body in re.findall(pattern,page,re.I|re.S):
+    label=re.sub(r"<[^>]+>"," ",body)
+    label=re.sub(r"\\s+"," ",label).strip()
+    absolute=__import__("urllib.parse",fromlist=["urljoin"]).urljoin(base,href)
+    if label and len(label)<100 and re.search(r"/(?:anime|media)/",absolute):
+     entries.append((absolute,label))
+  for url,title in entries:
+   if len(metas)>=limit: break
+   if not title or _is_non_latin_release(title): continue
+   anime_id=f"{probe.site_name}:{url}"
+   if anime_id in seen: continue
+   try:
+    episodes=await asyncio.to_thread(probe.list_episodes,anime_id,dub=True)
+    if not episodes: continue
+    # AnimeAV1 exposes language-specific embeds; reject series without DUB on first ep.
+    if probe.site_name=="animeav1" and not await asyncio.to_thread(probe._has_dub,url,episodes):
+     continue
+   except Exception: continue
+   seen.add(anime_id)
+   meta=_catalog_item({"id":anime_id,"title":title,"extractor":probe.site_name})
+   if meta: metas.append(meta)
+  if len(metas)>=limit: break
+ return {"metas":metas}
+
+@app.get("/catalog/series/{catalog_id}.json")\nasync def catalog_index(catalog_id:str,search:str=""):\n if catalog_id=="animux-search": return await _catalog_results(search.strip()) if search.strip() else {"metas":[]}\n if catalog_id=="animux-popular": return await _popular_catalog()\n if catalog_id=="animux-latest": return await _discover_catalog(("monoschino","animeav1"))\n if catalog_id=="animux-trending": return await _discover_catalog(("animeav1","monoschino"))\n raise HTTPException(404,"Catálogo no encontrado")\n\n@app.get("/catalog/series/animux-search.json")
 async def catalog_empty(search:str=""):
  return await _catalog_results(search.strip()) if search.strip() else {"metas":[]}
 
