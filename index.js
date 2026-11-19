@@ -1,5 +1,5 @@
 const express = require("express");
-const { addonBuilder } = require("stremio-addon-sdk");
+const { addonBuilder, getRouter } = require("stremio-addon-sdk");
 
 const PORT = process.env.PORT || 3000;
 const TIMEOUT_MS = Number(process.env.PROVIDER_TIMEOUT_MS || 9000);
@@ -11,8 +11,8 @@ const manifest = {
   name: "AnimeLatam Torrents Latino",
   description: "Buscador de torrents de anime. Solo muestra publicaciones que declaran explícitamente audio español latino.",
   resources: ["catalog", "stream"],
-  types: ["series", "movie"],
-  catalogs: [{ type: "series", id: "anime-latino-torrents", name: "Torrents Anime Latino", extra: [{ name: "search", isRequired: true }] }],
+  types: ["movie"],
+  catalogs: [{ type: "movie", id: "anime-latino-torrents", name: "Torrents Anime Latino", extra: [{ name: "search", isRequired: true }] }],
   idPrefixes: ["altt:"]
 };
 
@@ -120,8 +120,8 @@ builder.defineCatalogHandler(async ({ type, id, extra }) => {
   if (id !== "anime-latino-torrents" || !extra?.search) return { metas: [] };
   const { results } = await searchAll(extra.search);
   return { metas: results.slice(0, 100).map((x, i) => ({
-    id: "altt:" + encodeURIComponent(x.magnet),
-    type: "series",
+    id: "altt:" + Buffer.from(x.magnet).toString("base64url"),
+    type: "movie",
     name: x.title,
     poster: "",
     description: "Proveedor: " + x.provider + " · Audio latino declarado en el nombre del release",
@@ -132,7 +132,7 @@ builder.defineCatalogHandler(async ({ type, id, extra }) => {
 });
 builder.defineStreamHandler(async ({ type, id }) => {
   if (!id.startsWith("altt:")) return { streams: [] };
-  const magnet = decodeURIComponent(id.slice(5));
+  let magnet;\n  try { magnet = Buffer.from(id.slice(5), "base64url").toString("utf8"); } catch { return { streams: [] }; }
   if (!magnet.startsWith("magnet:?xt=urn:btih:")) return { streams: [] };
   return { streams: [{ name: "AnimeLatam • Torrent", title: "Audio español latino (etiqueta del release)", url: magnet, behaviorHints: { notWebReady: true } }] };
 });
@@ -147,5 +147,5 @@ app.get("/debug/search", async (req, res) => {
   const data = await searchAll(req.query.q);
   res.json({ query: req.query.q, filter: "Spanish Latin audio explicitly tagged in release title", ...data });
 });
-app.use(addonInterface);
+app.use(getRouter(addonInterface));
 app.listen(PORT, () => console.log("AnimeLatam Torrents Latino listening on " + PORT));
