@@ -147,5 +147,5 @@ app.get("/debug/search", async (req, res) => {
   const data = await searchAll(req.query.q);
   res.json({ query: req.query.q, filter: "Spanish Latin audio explicitly tagged in release title", ...data });
 });
-app.use(addonInterface.getRouter());
+app.use(addonInterface);
 app.listen(PORT, () => console.log("AnimeLatam Torrents Latino listening on " + PORT));
