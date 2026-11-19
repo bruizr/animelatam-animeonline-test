@@ -132,7 +132,8 @@ builder.defineCatalogHandler(async ({ type, id, extra }) => {
 });
 builder.defineStreamHandler(async ({ type, id }) => {
   if (!id.startsWith("altt:")) return { streams: [] };
-  let magnet;\n  try { magnet = Buffer.from(id.slice(5), "base64url").toString("utf8"); } catch { return { streams: [] }; }
+  let magnet;
+  try { magnet = Buffer.from(id.slice(5), "base64url").toString("utf8"); } catch { return { streams: [] }; }
   if (!magnet.startsWith("magnet:?xt=urn:btih:")) return { streams: [] };
   return { streams: [{ name: "AnimeLatam • Torrent", title: "Audio español latino (etiqueta del release)", url: magnet, behaviorHints: { notWebReady: true } }] };
 });
