@@ -99,7 +99,19 @@ def _resolve_streams(payload):
   candidates=engine.list_episode_servers(anime_id,episode,dub=True,title=title,lang="es")
  except Exception as exc:
   log.warning("No se pudieron enumerar servidores: %s",exc); candidates=[]
- for candidate in (candidates or [])[:5]:
+ # Resolver primero servidores que suelen entregar URL directa rápidamente.
+ # En producción Stremio puede abandonar solicitudes que tardan decenas de segundos;
+ # no debemos esperar a probar todos los embeds lentos antes de devolver una fuente.
+ priority = {"mp4upload": 0, "pixeldrain": 1, "mega": 2, "zilla": 3, "voe": 4}
+ ordered_candidates = sorted(
+  candidates or [],
+  key=lambda item: min(
+   (rank for marker, rank in priority.items()
+    if marker in (str(item.server_label) + " " + str(item.server_id) + " " + str(item.iframe_url)).lower()),
+   default=10
+  )
+ )
+ for candidate in ordered_candidates[:5]:
   try:
    result=engine.resolve_episode_server(anime_id,episode,candidate.candidate_id,
                                         dub=True,title=title,lang="es")
