@@ -18,7 +18,7 @@ logging.basicConfig(level=os.getenv("LOG_LEVEL", "WARNING"))
 log = logging.getLogger("animux-stremio")
 
 APP_NAME = "Animux • Anime Latino"
-APP_VERSION = "0.2.0"
+APP_VERSION = "0.2.1"
 PUBLIC_BASE_URL = os.getenv(
     "PUBLIC_BASE_URL",
     "https://animelatam-animeonline-test.vercel.app",
