@@ -1,30 +1,31 @@
-# Animux Stremio • Anime Latino
+# Animux Stremio • Buscador de fuentes
 
-Addon de Stremio que adapta el motor de extracción de [Animux](https://github.com/MarcoAnotino/animux) a una API HTTP.
+Addon de Stremio basado en el motor de extracción de [Animux](https://github.com/MarcoAnotino/animux).
 
-## Funciones
-- Catálogo Populares: selección curada y validada mediante búsqueda real en los proveedores.\n- Catálogo Últimos agregados: lectura de listados públicos de los proveedores compatibles con doblaje.\n- Búsqueda de anime y fichas de series con episodios.\n- No se publica un ranking de Tendencias porque los proveedores consultados no exponen métricas fiables de popularidad.
-- Resolución de enlaces al solicitar cada episodio.
-- Varios servidores cuando la fuente permite enumerarlos.
-- Fallback entre proveedores.
-- Modo de doblaje español; AnimeFLV se limita a la pista `LAT`, excluyendo `ESP` y `CAST`.
-- Aviso cuando no se encuentran fuentes reproducibles.
+## Funciones activas
+- Una única búsqueda de anime.
+- Selección mínima de episodios.
+- Resolución automática de la primera fuente reproducible.
+- Solo doblaje español latino; AnimeFLV se limita a la pista LAT.
+- Aviso externo cuando no se encuentra una fuente.
 
-## Fuentes
-El orden del motor Animux para español doblado es MonosChinos → AnimeFLV → AnimeAV1. La disponibilidad cambia según los proveedores. Las etiquetas de idioma de terceros no siempre permiten verificar de forma independiente la región del audio.
+No hay catálogos de populares, últimos agregados, tendencias ni páginas de descubrimiento. El catálogo de búsqueda y la ficha mínima de episodios se conservan porque Stremio necesita un anime y un identificador de episodio antes de solicitar sus fuentes.
+
+## Resolución
+La extracción intenta primero el servidor directo MP4Upload cuando está disponible, después servidores secundarios y deja los servidores HLS más lentos para el final. El addon devuelve la primera fuente válida para evitar que Stremio espere a múltiples intentos redundantes.
 
 ## Desarrollo local
 Requiere Python 3.10+.
 
 ```bash
 python -m venv .venv
-# Windows: .venv\Scripts\activate
+# Windows: .venv\\Scripts\\activate
 # Linux/macOS: source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app:app --host 0.0.0.0 --port 3000
 ```
 
-Rutas: `/manifest.json`, `/health`, `/providers`, `/debug/search?q=naruto`, catálogo, meta y stream de Stremio.
+Rutas principales: `/manifest.json`, `/catalog/series/animux-search`, `/meta/series/{id}.json` y `/stream/series/{id}.json`.
 
 ## Despliegue
 FastAPI sobre runtime Python de Vercel. Los pushes a `main` activan el despliegue conectado.
@@ -32,6 +33,6 @@ FastAPI sobre runtime Python de Vercel. Los pushes a `main` activan el despliegu
 ## Créditos y licencia
 El motor se basa en [Animux](https://github.com/MarcoAnotino/animux), de MarcoAnotino, derivado a su vez de ani-cli. Se conservan los avisos originales en `LICENSE` y `NOTICE`.
 
-Esta adaptación se distribuye bajo GNU GPL v3.0. Se modificó para integrarla con Stremio y limitar AnimeFLV a la pista LAT. Consulta `LICENSE` para el texto completo.
+Esta adaptación se distribuye bajo GNU GPL v3.0. Consulta `LICENSE` para el texto completo.
 
 El addon no aloja archivos multimedia; los proveedores externos determinan la disponibilidad y las condiciones de acceso.
