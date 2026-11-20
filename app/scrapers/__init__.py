@@ -1,4 +1,4 @@
-from app.scrapers.mon oschinos import scrape as scrape_monoschinos
+from app.scrapers.monoschinos import scrape as scrape_monoschinos
 from app.scrapers.animeav1 import scrape as scrape_animeav1
 
 async def scrape_all(title: str, episode: int):
