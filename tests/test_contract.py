@@ -4,7 +4,11 @@ import app
 
 class AddonContractTests(unittest.TestCase):
     def test_manifest_is_search_and_stream_only(self):
-        self.assertEqual(app.manifest["resources"], ["catalog", "meta", "stream"])
+        self.assertEqual(app.manifest["resources"][0], "catalog")
+        resources = {item["name"]: item for item in app.manifest["resources"] if isinstance(item, dict)}
+        self.assertEqual(resources["meta"]["idPrefixes"], ["animux:anime:"])
+        self.assertNotIn("idPrefixes", resources["stream"])
+        self.assertNotIn("idPrefixes", app.manifest)
         self.assertEqual(
             [catalog["id"] for catalog in app.manifest["catalogs"]],
             ["animux-search"],
@@ -42,6 +46,7 @@ class AddonContractTests(unittest.TestCase):
             stream["behaviorHints"]["proxyHeaders"]["request"]["Referer"],
             "https://embed.example/",
         )
+        self.assertTrue(stream["behaviorHints"]["notWebReady"])
 
 
 if __name__ == "__main__":
