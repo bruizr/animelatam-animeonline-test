@@ -36,9 +36,7 @@ class AnimeAV1Extractor(BaseAnimeExtractor):
         if not page:
             return []
 
-        # Extracción elástica basada en la lógica espejo del servicio JS
         slugs = re.findall(r"/media/([a-zA-Z0-9_-]+)(?!/\d+)", page)
-
         candidates = []
         seen = set()
         for slug in slugs:
@@ -71,7 +69,8 @@ class AnimeAV1Extractor(BaseAnimeExtractor):
             max_workers=min(6, len(candidates) or 1)
         ) as executor:
             futures = [
-                executor.submit(enrich, candidate) for candidate in candidates
+                executor.submit(enrich, candidate)
+                for candidate in candidates
             ]
             for future in futures:
                 try:
@@ -97,9 +96,9 @@ class AnimeAV1Extractor(BaseAnimeExtractor):
         if not page:
             return []
 
-        # Captura precisa de rutas de episodios mapeando el contenedor svelte
         href_numbers = re.findall(
-            r'href=["\']/media/[a-zA-Z0-9_-]+/(\d+(?:\.\d+)?)/?["\']', page
+            r'href=["\']/media/[a-zA-Z0-9_-]+/(\d+(?:\.\d+)?)/?["\']',
+            page,
         )
         if not href_numbers:
             for article in re.findall(
@@ -108,13 +107,13 @@ class AnimeAV1Extractor(BaseAnimeExtractor):
                 re.IGNORECASE | re.DOTALL,
             ):
                 match = re.search(
-                    r'<span[^>]*>\s*([0-9]+(?:\.[0-9]+)?)\s*</span>', article
+                    r'<span[^>]*>\s*([0-9]+(?:\.[0-9]+)?)\s*</span>',
+                    article,
                 )
                 if match:
                     href_numbers.append(match.group(1))
         if not href_numbers:
             return []
-
         return sorted(list(set(href_numbers)), key=float)
 
     def get_episode(self, title_or_id, episode, dub=False):
@@ -137,10 +136,7 @@ class AnimeAV1Extractor(BaseAnimeExtractor):
         )
         if not iframe_urls:
             raise RuntimeError("AnimeAV1 no devolvió servidores de video.")
-        return {
-            "episode_url": episode_url,
-            "iframe_urls": iframe_urls,
-        }
+        return {"episode_url": episode_url, "iframe_urls": iframe_urls}
 
     def extract(self, url, match=None):
         match = match or re.match(self._VALID_URL, url)
@@ -169,7 +165,6 @@ class AnimeAV1Extractor(BaseAnimeExtractor):
                 for value in values
             ]
 
-        # Mapeo elástico emulando VIDEO_URL_REGEX de tu archivo js de referencia
         patterns = [
             r"https?://(?:www\.)?pixeldrain\.com/(?:embed/)?[a-zA-Z0-9_-]+",
             r"https?://mega\.nz/embed/[a-zA-Z0-9_-]+#[a-zA-Z0-9_-]+",
@@ -178,12 +173,13 @@ class AnimeAV1Extractor(BaseAnimeExtractor):
             r"https?://[a-zA-Z0-9_-]*zilla[a-zA-Z0-9._/:-]+",
             r"https?://[a-zA-Z0-9_-]*uns\.bio/[a-zA-Z0-9_#-]+",
         ]
-
         urls = []
         for pattern in patterns:
-            for m in re.findall(pattern, page, re.IGNORECASE):
+            for match in re.findall(pattern, page, re.IGNORECASE):
                 cleaned = (
-                    m.replace("\\/", "/").replace('\\"', "").replace("\\'", "")
+                    match.replace("\\/", "/")
+                    .replace('\\\"', "")
+                    .replace("\\'", "")
                 )
                 if cleaned not in urls:
                     urls.append(cleaned)
@@ -197,7 +193,6 @@ class AnimeAV1Extractor(BaseAnimeExtractor):
 
         series_slug = match.group("series")
         ep_no = match.group("ep_no")
-
         page = self._download_webpage(url)
         if not page:
             raise RuntimeError("No se pudo obtener el episodio de AnimeAV1.")
@@ -208,65 +203,59 @@ class AnimeAV1Extractor(BaseAnimeExtractor):
 
         video_url = None
         chosen_iframe = None
+        mp4upload_iframes = [item for item in iframe_urls if "mp4upload" in item.lower()]
+        zilla_iframes = [
+            item for item in iframe_urls
+            if "zilla" in item.lower() or "player." in item.lower()
+        ]
+        other_iframes = [
+            item for item in iframe_urls
+            if item not in mp4upload_iframes and item not in zilla_iframes
+        ]
 
-        # Separamos los servidores por orden de calidad y estabilidad
-        zilla_iframes = [i for i in iframe_urls if "zilla" in i.lower() or "player." in i.lower()]
-        other_iframes = [i for i in iframe_urls if i not in zilla_iframes and "mp4upload" not in i.lower()]
-        mp4upload_iframes = [i for i in iframe_urls if "mp4upload" in i.lower()]
+        # MP4Upload es el primer intento. En Vercel no se presupone que yt-dlp
+        # esté instalado: se usa el extractor HTTP/regex integrado del motor.
+        for iframe in mp4upload_iframes:
+            self._log("[animeav1] Resolviendo MP4Upload directamente.")
+            resolved = self._process_single_iframe(iframe, url, 1)
+            if resolved and resolved[0]:
+                video_url, chosen_iframe = resolved[:2]
+                break
 
-        # 1. Priorizar MP4Upload: ya se comprobó que entrega un MP4 directo
-        # y evita esperar a la extracción HLS de Zilla/yt-dlp.
-        if mp4upload_iframes:
-            iframe = mp4upload_iframes[0]
-            self._log("[animeav1] Intentando primero MP4Upload.")
-            resolved = self._get_url_via_ytdlp(iframe, referer=url)
-            if resolved:
-                video_url = resolved
-                chosen_iframe = iframe
-
-        # 2. Fallback: otros servidores directos (Mega, Pixeldrain, Uns.bio...)
+        # Después se prueban los demás servidores no-HLS.
         if not video_url and other_iframes:
-            self._log("[animeav1] Probando servidores secundarios directos.")
-            video_url, chosen_iframe = self._extract_video_from_iframes(other_iframes, url)
-            if not video_url:
-                for iframe in other_iframes:
-                    resolved = self._get_url_via_ytdlp(iframe, referer=url)
-                    if resolved:
-                        video_url = resolved
-                        chosen_iframe = iframe
-                        break
+            self._log("[animeav1] Probando servidores secundarios.")
+            video_url, chosen_iframe = self._extract_video_from_iframes(
+                other_iframes, url
+            )
 
-        # 3. Último recurso: Zilla Networks (HLS), que puede tardar más.
-        if not video_url and zilla_iframes:
+        # Zilla/HLS queda como último recurso porque puede ser lento.
+        if not video_url:
             for iframe in zilla_iframes:
                 self._log(
-                    "[animeav1] Intentando desencriptar HLS de Zilla: "
+                    "[animeav1] Intentando Zilla como último recurso: "
                     f"{_safe_url(iframe)}"
                 )
-                # Intentamos regex rápido primero
                 zilla_html = self._download_webpage(iframe, referer=url)
                 if zilla_html:
                     m3u8_match = re.search(
                         r'["\']?(?:file|src|source|url)["\']?\s*:\s*["\'](https?://[^"\']+\.m3u8[^"\']*)["\']',
                         zilla_html,
-                        re.IGNORECASE
+                        re.IGNORECASE,
                     )
                     if m3u8_match:
                         video_url = m3u8_match.group(1).replace("\\/", "/")
                         chosen_iframe = iframe
                         break
-                
-                # Si el regex rápido de Zilla falla, forzamos yt-dlp INMEDIATAMENTE sobre Zilla
-                self._log(f"[animeav1] Regex rápido falló en Zilla. Extrayendo nativamente con yt-dlp...")
-                resolved = self._get_url_via_ytdlp(iframe, referer=url)
-                if resolved:
-                    video_url = resolved
-                    chosen_iframe = iframe
+                resolved = self._process_single_iframe(iframe, url, 1)
+                if resolved and resolved[0]:
+                    video_url, chosen_iframe = resolved[:2]
                     break
 
-
         if not video_url:
-            raise RuntimeError("Ningún servidor de AnimeAV1 devolvió un stream de video válido.")
+            raise RuntimeError(
+                "Ningún servidor de AnimeAV1 devolvió un stream reproducible."
+            )
 
         return {
             "id": f"media/{series_slug}-{ep_no}",
@@ -280,7 +269,7 @@ class AnimeAV1Extractor(BaseAnimeExtractor):
                     "protocol": "m3u8_native" if ".m3u8" in video_url else "https",
                     "http_headers": {
                         "User-Agent": self.user_agent,
-                        "Referer": chosen_iframe,
+                        "Referer": chosen_iframe or url,
                     },
                 }
             ],
