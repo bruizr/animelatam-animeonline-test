@@ -144,16 +144,21 @@ def _stream_from_result(result, episode, title):
         or result.get("extractor")
         or "Animux"
     )
+    extension = str(fmt.get("ext") or result.get("ext") or "").lower()
+    # Stremio exige notWebReady=true siempre que se envían proxyHeaders.
+    # También se marca así para HLS/formatos distintos de MP4.
+    not_web_ready = bool(headers) or extension != "mp4" or ".m3u8" in url.lower()
+
     stream = {
         "name": "Animux • " + str(source),
         "title": f"{title} • Episodio {episode} • Español latino",
         "url": url,
-        "behaviorHints": {"notWebReady": False},
+        "behaviorHints": {"notWebReady": not_web_ready},
     }
     if headers:
         stream["behaviorHints"]["proxyHeaders"] = {"request": headers}
-    if result.get("ext"):
-        stream["description"] = str(result["ext"]).upper()
+    if extension:
+        stream["description"] = extension.upper()
     return stream
 
 
