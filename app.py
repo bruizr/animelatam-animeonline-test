@@ -6,7 +6,7 @@ import os
 import re
 import unicodedata
 from html import escape
-from urllib.parse import parse_qs, quote
+from urllib.parse import parse_qs, quote, urlsplit
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -175,7 +175,24 @@ def _resolve_streams(payload):
             source="auto",
         )
         stream = _stream_from_result(result, episode, title)
-        return [stream] if stream else []
+        if stream:
+            parsed = urlsplit(stream["url"])
+            headers = stream.get("behaviorHints", {}).get("proxyHeaders", {}).get("request", {})
+            log.info(
+                "Fuente lista: anime=%s episodio=%s host=%s ext=%s headers=%s",
+                title,
+                episode,
+                parsed.hostname or "desconocido",
+                result.get("ext") or "desconocida",
+                ",".join(sorted(headers.keys())) or "ninguno",
+            )
+            return [stream]
+        log.warning(
+            "El extractor devolvió resultado sin URL HTTP válida: anime=%s episodio=%s",
+            title,
+            episode,
+        )
+        return []
     except Exception as exc:
         log.warning(
             "No se encontró fuente para %s episodio %s: %s",
