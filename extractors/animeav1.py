@@ -214,8 +214,30 @@ class AnimeAV1Extractor(BaseAnimeExtractor):
         other_iframes = [i for i in iframe_urls if i not in zilla_iframes and "mp4upload" not in i.lower()]
         mp4upload_iframes = [i for i in iframe_urls if "mp4upload" in i.lower()]
 
-        # 1. INTENTO PRIORITARIO: Zilla Networks (HLS)
-        if zilla_iframes:
+        # 1. Priorizar MP4Upload: ya se comprobó que entrega un MP4 directo
+        # y evita esperar a la extracción HLS de Zilla/yt-dlp.
+        if mp4upload_iframes:
+            iframe = mp4upload_iframes[0]
+            self._log("[animeav1] Intentando primero MP4Upload.")
+            resolved = self._get_url_via_ytdlp(iframe, referer=url)
+            if resolved:
+                video_url = resolved
+                chosen_iframe = iframe
+
+        # 2. Fallback: otros servidores directos (Mega, Pixeldrain, Uns.bio...)
+        if not video_url and other_iframes:
+            self._log("[animeav1] Probando servidores secundarios directos.")
+            video_url, chosen_iframe = self._extract_video_from_iframes(other_iframes, url)
+            if not video_url:
+                for iframe in other_iframes:
+                    resolved = self._get_url_via_ytdlp(iframe, referer=url)
+                    if resolved:
+                        video_url = resolved
+                        chosen_iframe = iframe
+                        break
+
+        # 3. Último recurso: Zilla Networks (HLS), que puede tardar más.
+        if not video_url and zilla_iframes:
             for iframe in zilla_iframes:
                 self._log(
                     "[animeav1] Intentando desencriptar HLS de Zilla: "
@@ -242,25 +264,6 @@ class AnimeAV1Extractor(BaseAnimeExtractor):
                     chosen_iframe = iframe
                     break
 
-        # 2. FALLBACK 1: Otros servidores estables (Mega, Pixeldrain, Uns.bio...)
-        if not video_url and other_iframes:
-            self._log("[animeav1] Pasando a servidores secundarios estables...")
-            video_url, chosen_iframe = self._extract_video_from_iframes(other_iframes, url)
-            if not video_url:
-                for iframe in other_iframes:
-                    resolved = self._get_url_via_ytdlp(iframe, referer=url)
-                    if resolved:
-                        video_url = resolved
-                        chosen_iframe = iframe
-                        break
-
-        # 3. FALLBACK 2: MP4Upload (Último recurso si todo lo demás falla)
-        if not video_url and mp4upload_iframes:
-            self._log("[animeav1] Alerta: Usando MP4Upload como último recurso.")
-            resolved = self._get_url_via_ytdlp(mp4upload_iframes[0], referer=url)
-            if resolved:
-                video_url = resolved
-                chosen_iframe = mp4upload_iframes[0]
 
         if not video_url:
             raise RuntimeError("Ningún servidor de AnimeAV1 devolvió un stream de video válido.")
