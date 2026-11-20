@@ -18,7 +18,7 @@ def normalize(value: str) -> str:
     return " ".join(value.split())
 
 def episode_number(text: str):
-    match = re.search(r"(?:episodio|episode|capitulo|capítulo|ep)\\s*[-#:]?\\s*(\\d{1,4})|(?:[-/])(?:episode-?)?(\\d{1,4})(?:\\b|/)", text or "", re.I)
+    match = re.search(r"(?:episodio|episode|capitulo|capítulo|ep)\s*[-#:]?\s*(\d{1,4})|(?:[-/])(?:episode-?)?(\d{1,4})(?:\b|/)", text or "", re.I)
     if not match:
         return None
     return int(next(group for group in match.groups() if group))
