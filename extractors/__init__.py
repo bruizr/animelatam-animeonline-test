@@ -21,7 +21,7 @@ SOURCE_ORDER = {
     ("es", False): (
         "jkanime", "animeflv", "animefenix", "tioanime", "animeav1"
     ),
-    ("es", True): ("monoschino", "animeflv", "animeav1"),
+    ("es", True): ("animeav1", "monoschino", "animeflv"),
     ("en", False): ("gogoanime",),
     ("en", True): ("gogoanime",),
 }
