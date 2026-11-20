@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import re
+import time
 import unicodedata
 from html import escape
 from urllib.parse import parse_qs, quote, urlsplit
@@ -18,7 +19,7 @@ logging.basicConfig(level=os.getenv("LOG_LEVEL", "WARNING"))
 log = logging.getLogger("animux-stremio")
 
 APP_NAME = "Animux • Anime Latino"
-APP_VERSION = "0.2.1"
+APP_VERSION = "0.2.2"
 PUBLIC_BASE_URL = os.getenv(
     "PUBLIC_BASE_URL",
     "https://animelatam-animeonline-test.vercel.app",
@@ -63,6 +64,37 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def request_diagnostics(request, call_next):
+    started = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        elapsed_ms = round((time.perf_counter() - started) * 1000)
+        route = request.url.path.split("/")
+        route_hint = "/".join(route[:4])
+        log.exception(
+            "HTTP request failed method=%s route=%s status=500 elapsed_ms=%s ua=%s",
+            request.method,
+            route_hint,
+            elapsed_ms,
+            (request.headers.get("user-agent") or "unknown")[:100],
+        )
+        raise
+    elapsed_ms = round((time.perf_counter() - started) * 1000)
+    route = request.url.path.split("/")
+    route_hint = "/".join(route[:4])
+    log.warning(
+        "HTTP request method=%s route=%s status=%s elapsed_ms=%s ua=%s",
+        request.method,
+        route_hint,
+        response.status_code,
+        elapsed_ms,
+        (request.headers.get("user-agent") or "unknown")[:100],
+    )
+    return response
 
 
 def _encode(data):
