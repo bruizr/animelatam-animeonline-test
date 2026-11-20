@@ -31,7 +31,18 @@ manifest = {
     "version": APP_VERSION,
     "name": APP_NAME,
     "description": "Buscador de fuentes de anime en español latino.",
-    "resources": ["catalog", "meta", "stream"],
+    "resources": [
+        "catalog",
+        {
+            "name": "meta",
+            "types": ["series"],
+            "idPrefixes": ["animux:anime:"],
+        },
+        {
+            "name": "stream",
+            "types": ["series"],
+        },
+    ],
     "types": ["series"],
     "catalogs": [
         {
@@ -41,7 +52,6 @@ manifest = {
             "extra": [{"name": "search", "isRequired": False}],
         }
     ],
-    "idPrefixes": ["animux:"],
     "behaviorHints": {"adult": False, "p2p": False},
 }
 
