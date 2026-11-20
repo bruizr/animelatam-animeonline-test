@@ -99,9 +99,19 @@ def _resolve_streams(payload):
   candidates=engine.list_episode_servers(anime_id,episode,dub=True,title=title,lang="es")
  except Exception as exc:
   log.warning("No se pudieron enumerar servidores: %s",exc); candidates=[]
- # Resolver primero servidores que suelen entregar URL directa rápidamente.
- # En producción Stremio puede abandonar solicitudes que tardan decenas de segundos;
- # no debemos esperar a probar todos los embeds lentos antes de devolver una fuente.
+ # Para AnimeAV1 usamos primero el extractor completo: inspecciona todos los embeds
+ # de la página y puede elegir MP4Upload sin esperar a servidores lentos.
+ if anime_id.startswith("animeav1:"):
+  try:
+   direct_result=engine.get_episode(anime_id,episode,dub=True,title=title,lang="es",server="auto",source="animeav1")
+   direct_stream=_stream_from_result(direct_result,episode,title)
+   if direct_stream:
+    direct_stream["name"]="Animux • animeav1"
+    direct_stream["title"]=f"{title} • Ep. {episode} • Latino"
+    return [direct_stream]
+  except Exception as exc:
+   log.warning("Resolución directa AnimeAV1 fallida: %s",exc)
+ # Fallback: resolver candidatos individuales, priorizando embeds directos.
  priority = {"mp4upload": 0, "pixeldrain": 1, "mega": 2, "zilla": 3, "voe": 4}
  ordered_candidates = sorted(
   candidates or [],
