@@ -442,6 +442,8 @@ class BaseAnimeExtractor:
         return {
             "url": selected["url"],
             "referer": headers.get("Referer", ""),
+            # Preserve all required request headers for the Stremio client.
+            "http_headers": dict(headers),
             "extractor": extracted.get("extractor", self.site_name),
             "format_id": selected.get("format_id", ""),
             "ext": ext,
@@ -529,17 +531,32 @@ class BaseAnimeExtractor:
             self._log(f"[{self.site_name}] [Hilo {index}] ¡Flujo m3u8 directo encontrado!")
             return iframe, iframe
 
+        # Only accept HTTP(S) URLs that look like playable media. A generic
+        # <source src=...> can point to images, blobs or unrelated resources.
         patterns = [
-            r'(?:file|src|url)\s*:\s*["\']([^"\']+\.(?:m3u8|mp4)[^"\']*)["\']',
-            r'<source[^>]+src=["\']([^"\']+)["\']',
-            r'https?://[^"\' ]+\.(?:m3u8|mp4)[^"\' ]*'
+            r'(?:file|src|url)\s*:\s*["\']([^"\']+\.(?:m3u8|mp4)(?:[?#][^"\']*)?)["\']',
+            r'https?://[^"\' ]+\.(?:m3u8|mp4)(?:[?#][^"\' ]*)?',
         ]
 
         for pattern in patterns:
-            m = re.search(pattern, iframe_html)
+            m = re.search(pattern, iframe_html, re.IGNORECASE)
             if m:
                 video_url = m.group(1) if m.groups() else m.group(0)
-                self._log(f"[{self.site_name}] [Hilo {index}] ¡Extraído por Regex con éxito!")
+                video_url = video_url.replace("\\/", "/").replace("&amp;", "&").strip()
+                if video_url.startswith(("https://", "http://")):
+                    self._log(f"[{self.site_name}] [Hilo {index}] ¡Extraído por Regex con éxito!")
+                    return video_url, iframe
+
+        # Allow extensionless URLs only when the declared MIME is video/*.
+        for tag in re.findall(r"<source\b[^>]*>", iframe_html, re.IGNORECASE):
+            src = re.search(r"""\bsrc\s*=\s*["']([^"']+)["']""", tag, re.IGNORECASE)
+            mime = re.search(r"""\btype\s*=\s*["'](video/[^"']+)["']""", tag, re.IGNORECASE)
+            if not src or not mime:
+                continue
+            video_url = src.group(1).replace("\\/", "/").replace("&amp;", "&").strip()
+            video_url = urllib.parse.urljoin(iframe, video_url)
+            if video_url.startswith(("https://", "http://")):
+                self._log(f"[{self.site_name}] [Hilo {index}] ¡Extraído por MIME de video!")
                 return video_url, iframe
 
         # 3. Fallback a yt-dlp (que ahora incluye impersonate automáticamente)
